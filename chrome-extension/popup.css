@@ -1,0 +1,133 @@
+:root {
+  --bg: #f6f4ee;
+  --card: #fffdf7;
+  --ink: #1c1c1c;
+  --muted: #6f6a5d;
+  --line: #d9d3c7;
+  --accent: #006a64;
+  --accent-strong: #004945;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 430px;
+  max-width: 430px;
+  font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+  background: radial-gradient(circle at 20% 20%, #fff5dd, var(--bg) 45%);
+  color: var(--ink);
+}
+
+.app {
+  padding: 14px;
+}
+
+h1 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  letter-spacing: 0.2px;
+}
+
+.upload-row {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.controls {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.controls label {
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+input,
+button {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: inherit;
+}
+
+input {
+  background: var(--card);
+  color: var(--ink);
+  padding: 7px 8px;
+}
+
+.actions {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+button {
+  padding: 9px 10px;
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+button:hover {
+  background: var(--accent-strong);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.status {
+  min-height: 20px;
+  margin: 10px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.result-strip {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: auto hidden;
+  min-height: 108px;
+  background: #fff;
+  display: flex;
+  align-items: stretch;
+}
+
+.swatch {
+  width: 78px;
+  min-width: 78px;
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  display: grid;
+  grid-template-rows: 1fr auto auto;
+}
+
+.swatch-color {
+  min-height: 62px;
+}
+
+.swatch-code,
+.swatch-hex {
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.25;
+  padding: 3px 4px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.swatch-code {
+  font-weight: 700;
+}

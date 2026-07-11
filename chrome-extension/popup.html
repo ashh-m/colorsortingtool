@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Swatch Rainbow Sorter</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="app">
+      <h1>Swatch Rainbow Sorter</h1>
+
+      <label class="upload-row" for="imageInput">
+        <span>Swatch Image</span>
+        <input id="imageInput" type="file" accept="image/*" />
+      </label>
+
+      <section class="controls">
+        <label>
+          Max swatches (0 = all)
+          <input id="maxCount" type="number" min="0" value="120" />
+        </label>
+        <label>
+          Saturation threshold
+          <input id="satThreshold" type="number" min="0" max="1" step="0.01" value="0.18" />
+        </label>
+        <label>
+          Value threshold
+          <input id="valThreshold" type="number" min="0" max="1" step="0.01" value="0.15" />
+        </label>
+        <label>
+          Min area ratio
+          <input id="minAreaRatio" type="number" min="0.00001" max="0.1" step="0.00001" value="0.0006" />
+        </label>
+        <label>
+          Label band ratio
+          <input id="labelBandRatio" type="number" min="0.1" max="2" step="0.05" value="0.75" />
+        </label>
+      </section>
+
+      <div class="actions">
+        <button id="processBtn" type="button">Process Image</button>
+        <button id="downloadJsonBtn" type="button" disabled>Download JSON</button>
+        <button id="downloadPngBtn" type="button" disabled>Download PNG</button>
+      </div>
+
+      <p id="status" class="status">Upload an image and click Process Image.</p>
+      <div id="resultStrip" class="result-strip"></div>
+    </main>
+
+    <canvas id="workCanvas" hidden></canvas>
+    <canvas id="previewCanvas" hidden></canvas>
+
+    <script src="vendor/tesseract.min.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

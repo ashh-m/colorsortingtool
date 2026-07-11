@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Swatch Rainbow Sorter",
+  "description": "Upload a swatch image, detect colors, read 3-digit labels, and sort into a seamless rainbow.",
+  "version": "1.0.0",
+  "action": {
+    "default_title": "Swatch Rainbow Sorter",
+    "default_popup": "popup.html"
+  },
+  "permissions": []
+}
