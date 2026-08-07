@@ -234,60 +234,81 @@ def extract_colors(
     return candidates
 
 
-def _path_length(order: list[int], labs: list[tuple[float, float, float]]) -> float:
-    total = 0.0
-    for i in range(1, len(order)):
-        a = np.array(labs[order[i - 1]])
-        b = np.array(labs[order[i]])
-        total += float(np.linalg.norm(a - b))
-    return total
+def _lab_to_lch(lab: tuple[float, float, float]) -> tuple[float, float, float]:
+    l_val, a_val, b_val = lab
+    chroma = float(np.hypot(a_val, b_val))
+    hue = float(np.degrees(np.arctan2(b_val, a_val)))
+    if hue < 0:
+        hue += 360.0
+    return l_val, chroma, hue
 
 
-def _nearest_neighbor_order(labs: list[tuple[float, float, float]]) -> list[int]:
-    start_idx = int(np.argmax([lab[1] for lab in labs]))  # most red/magenta as anchor
-    unvisited = set(range(len(labs)))
-    order = [start_idx]
-    unvisited.remove(start_idx)
+def _rotate_by_largest_hue_gap(items: list[dict[str, float | int]]) -> list[dict[str, float | int]]:
+    if len(items) <= 1:
+        return items[:]
 
-    while unvisited:
-        last = order[-1]
-        nearest = min(
-            unvisited,
-            key=lambda i: np.linalg.norm(np.array(labs[last]) - np.array(labs[i])),
-        )
-        order.append(nearest)
-        unvisited.remove(nearest)
-
-    return order
-
-
-def _two_opt(order: list[int], labs: list[tuple[float, float, float]], max_passes: int = 5) -> list[int]:
-    if len(order) < 4:
-        return order
-
-    best = order[:]
-    best_len = _path_length(best, labs)
-
-    for _ in range(max_passes):
-        improved = False
-        for i in range(1, len(best) - 2):
-            for j in range(i + 1, len(best) - 1):
-                candidate = best[:i] + list(reversed(best[i : j + 1])) + best[j + 1 :]
-                candidate_len = _path_length(candidate, labs)
-                if candidate_len + 1e-6 < best_len:
-                    best = candidate
-                    best_len = candidate_len
-                    improved = True
-        if not improved:
-            break
-    return best
+    max_gap = -1.0
+    cut = 0
+    for i in range(len(items)):
+        curr = float(items[i]["h"])
+        nxt = float(items[(i + 1) % len(items)]["h"])
+        gap = nxt - curr if i + 1 < len(items) else (nxt + 360.0) - curr
+        if gap > max_gap:
+            max_gap = gap
+            cut = (i + 1) % len(items)
+    return items[cut:] + items[:cut]
 
 
 def sort_rainbow(colors: list[ExtractedColor]) -> list[ExtractedColor]:
-    """Sort extracted colors into a smooth perceptual rainbow path."""
+    """Sort extracted colors by perceptual hue, with neutrals handled separately."""
     labs = [rgb_to_lab(c.rgb) for c in colors]
-    order = _nearest_neighbor_order(labs)
-    order = _two_opt(order, labs)
+    chroma_threshold = 12.0
+
+    chromatic: list[dict[str, float | int]] = []
+    neutral: list[dict[str, float | int]] = []
+    for idx, lab in enumerate(labs):
+        l_val, chroma, hue = _lab_to_lch(lab)
+        item = {"idx": idx, "l": l_val, "c": chroma, "h": hue}
+        if chroma >= chroma_threshold:
+            chromatic.append(item)
+        else:
+            neutral.append(item)
+
+    if not chromatic:
+        order = [int(item["idx"]) for item in sorted(neutral, key=lambda x: float(x["l"]))]
+        return [colors[i] for i in order]
+
+    chromatic.sort(
+        key=lambda x: (
+            float(x["h"]),
+            float(x["l"]),
+            -float(x["c"]),
+        )
+    )
+    chromatic = _rotate_by_largest_hue_gap(chromatic)
+
+    first_lab = np.array(labs[int(chromatic[0]["idx"])], dtype=np.float64)
+    last_lab = np.array(labs[int(chromatic[-1]["idx"])], dtype=np.float64)
+
+    head: list[dict[str, float | int]] = []
+    tail: list[dict[str, float | int]] = []
+    for item in neutral:
+        lab = np.array(labs[int(item["idx"])], dtype=np.float64)
+        d_first = float(np.linalg.norm(lab - first_lab))
+        d_last = float(np.linalg.norm(lab - last_lab))
+        if d_first <= d_last:
+            item = {**item, "d_anchor": d_first}
+            head.append(item)
+        else:
+            item = {**item, "d_anchor": d_last}
+            tail.append(item)
+
+    head.sort(key=lambda x: -float(x["d_anchor"]))
+    tail.sort(key=lambda x: float(x["d_anchor"]))
+
+    order = [int(item["idx"]) for item in head]
+    order.extend(int(item["idx"]) for item in chromatic)
+    order.extend(int(item["idx"]) for item in tail)
     return [colors[i] for i in order]
 
 
