@@ -56,75 +56,83 @@ function dist3(a, b) {
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-function nearestNeighborOrder(labs) {
-  let start = 0;
-  let bestA = -Infinity;
+function labToLch(lab) {
+  const [l, a, b] = lab;
+  const c = Math.sqrt(a * a + b * b);
+  let h = Math.atan2(b, a) * (180 / Math.PI);
+  if (h < 0) {
+    h += 360;
+  }
+  return [l, c, h];
+}
+
+function rotateByLargestHueGap(chromatic) {
+  if (chromatic.length <= 1) {
+    return chromatic.slice();
+  }
+  let maxGap = -1;
+  let cut = 0;
+  for (let i = 0; i < chromatic.length; i += 1) {
+    const curr = chromatic[i].h;
+    const next = chromatic[(i + 1) % chromatic.length].h;
+    const gap = i + 1 < chromatic.length ? next - curr : (next + 360) - curr;
+    if (gap > maxGap) {
+      maxGap = gap;
+      cut = (i + 1) % chromatic.length;
+    }
+  }
+  return chromatic.slice(cut).concat(chromatic.slice(0, cut));
+}
+
+function rainbowOrderByHue(labs, chromaThreshold = 12) {
+  const chromatic = [];
+  const neutral = [];
+
   for (let i = 0; i < labs.length; i += 1) {
-    if (labs[i][1] > bestA) {
-      bestA = labs[i][1];
-      start = i;
+    const [l, c, h] = labToLch(labs[i]);
+    const item = { idx: i, l, c, h };
+    if (c >= chromaThreshold) {
+      chromatic.push(item);
+    } else {
+      neutral.push(item);
     }
   }
 
-  const unvisited = new Set(labs.map((_, i) => i));
-  const order = [start];
-  unvisited.delete(start);
-
-  while (unvisited.size > 0) {
-    const last = order[order.length - 1];
-    let nearest = null;
-    let nearestDist = Infinity;
-    for (const idx of unvisited) {
-      const d = dist3(labs[last], labs[idx]);
-      if (d < nearestDist) {
-        nearestDist = d;
-        nearest = idx;
-      }
-    }
-    order.push(nearest);
-    unvisited.delete(nearest);
+  if (chromatic.length === 0) {
+    return neutral.sort((a, b) => a.l - b.l).map((x) => x.idx);
   }
 
-  return order;
-}
+  chromatic.sort((a, b) => {
+    const dh = Math.abs(a.h - b.h);
+    if (dh > 2) return a.h - b.h;
+    if (Math.abs(a.l - b.l) > 1) return a.l - b.l;
+    return b.c - a.c;
+  });
 
-function orderLength(order, labs) {
-  let total = 0;
-  for (let i = 1; i < order.length; i += 1) {
-    total += dist3(labs[order[i - 1]], labs[order[i]]);
-  }
-  return total;
-}
+  const orderedChromatic = rotateByLargestHueGap(chromatic);
+  const firstLab = labs[orderedChromatic[0].idx];
+  const lastLab = labs[orderedChromatic[orderedChromatic.length - 1].idx];
 
-function twoOpt(order, labs, passes = 4) {
-  if (order.length < 4) {
-    return order.slice();
-  }
-
-  let best = order.slice();
-  let bestLen = orderLength(best, labs);
-
-  for (let pass = 0; pass < passes; pass += 1) {
-    let improved = false;
-
-    for (let i = 1; i < best.length - 2; i += 1) {
-      for (let j = i + 1; j < best.length - 1; j += 1) {
-        const candidate = best.slice(0, i).concat(best.slice(i, j + 1).reverse(), best.slice(j + 1));
-        const candLen = orderLength(candidate, labs);
-        if (candLen + 1e-6 < bestLen) {
-          best = candidate;
-          bestLen = candLen;
-          improved = true;
-        }
-      }
-    }
-
-    if (!improved) {
-      break;
+  const head = [];
+  const tail = [];
+  for (let i = 0; i < neutral.length; i += 1) {
+    const item = neutral[i];
+    const dFirst = dist3(labs[item.idx], firstLab);
+    const dLast = dist3(labs[item.idx], lastLab);
+    if (dFirst <= dLast) {
+      head.push({ ...item, dAnchor: dFirst });
+    } else {
+      tail.push({ ...item, dAnchor: dLast });
     }
   }
 
-  return best;
+  head.sort((a, b) => b.dAnchor - a.dAnchor);
+  tail.sort((a, b) => a.dAnchor - b.dAnchor);
+
+  return head
+    .map((x) => x.idx)
+    .concat(orderedChromatic.map((x) => x.idx))
+    .concat(tail.map((x) => x.idx));
 }
 
 function rgbToHsv01(r, g, b) {
@@ -368,8 +376,7 @@ async function processImage(file) {
   }
 
   const labs = swatches.map((s) => rgbToLab(s.rgb));
-  const initialOrder = nearestNeighborOrder(labs);
-  const bestOrder = twoOpt(initialOrder, labs);
+  const bestOrder = rainbowOrderByHue(labs);
 
   const sorted = bestOrder.map((idx, i) => {
     const s = swatches[idx];
